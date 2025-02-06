@@ -1,0 +1,12 @@
+{
+	"authors": [ "Koni Marti <koni.marti@gmail.com>" ],
+	"version": "0.1.0",
+	"output": "build",
+	"sources": [ "pem.c3" ],
+	"targets": {
+		"testrunner": {
+			"type": "executable",
+			"sources": [ "pem.c3", "pem_test.c3" ]
+		}
+	}
+}
