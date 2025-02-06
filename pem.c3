@@ -13,7 +13,7 @@ const String PEM_END = "\n-----END";
 const String PEM_EOL = "-----";
 const String COLON = ":";
 
-def Header = HashMap(<String, String>);
+def Header = HashMap<[String, String]>;
 
 fault PemError
 {
@@ -77,7 +77,7 @@ fn usz! PemBlock.to_format(&self, Formatter *f) @dynamic
 	else
 	{
 		@pool() {
-			n += f.printf("%s\n", base64::encode_temp(self.bytes)!)!;
+			n += f.printf("%s\n", base64::encode_temp(self.bytes))!;
 		};
 	}
 	return n;

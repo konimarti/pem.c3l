@@ -22,12 +22,12 @@ aGVsbG8gdGhpcyBpcyBqdXN0IGEgbG9uZyBsaW5lIGZvciBiYXNlNjQgZW5jb2Rp
 bmcsIHBhZGRpbmc/Cg==
 -----END PRIVACY-ENHANCED MESSAGE-----`;
 
-fn void! test_pem_block() @test
+fn void test_pem_block() @test
 {
 	Parser p;
-	p.init(PEM, allocator::heap());
+	p.init(PEM);
 
-	PemBlock b = p.pem_block()!;
+	PemBlock b = p.pem_block(allocator::heap())!!;
 	defer b.free();
 
 	String want_type = "PRIVACY-ENHANCED MESSAGE";
@@ -48,14 +48,14 @@ text after the block
 `,
 };
 
-fn void! test_pem() @test
+fn void test_pem() @test
 {
 	foreach (text : PEMTESTS)
 	{
 		Parser p;
-		p.init(text, allocator::heap());
+		p.init(text);
 
-		PemBlock b = p.pem_block()!;
+		PemBlock b = p.pem_block(allocator::heap())!!;
 		defer b.free();
 
 		String want_type = "PEM";
@@ -73,7 +73,7 @@ struct GetlineTest
 	String[] out;
 }
 
-fn void! test_getline() @test
+fn void test_getline() @test
 {
 	GetlineTest[] tests = {
 		{
@@ -106,7 +106,7 @@ fn void! test_getline() @test
 		// io::printfn("readline: '%s'", t.in);
 		for (int i = 0; i < t.out.len; i++)
 		{
-			got = p.getline()!;
+			got = p.getline()!!;
 			assert(got == t.out[i], "test [%d]: getline error: "
 				"got: '%s', want '%s'", n+1, got, t.out[i]);
 		}

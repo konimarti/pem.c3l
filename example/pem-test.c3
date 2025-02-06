@@ -22,9 +22,9 @@ NKHCYCsRkZgh6TvedOFATUFndQqP302F/EoZfEZDN9mNyCycCemfPQPH9Zd/bDFp
 uY855E8ucATSOqY=
 -----END PRIVATE KEY-----`;
 
-fn void! main()
+fn void main()
 {
-	PemBlock block = pem::decode_new(PEM)!;
+	PemBlock block = pem::decode_new(PEM)!!;
 	defer block.free();
 	io::printn(block);
 }
