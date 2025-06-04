@@ -13,21 +13,17 @@ const String PEM_END = "\n-----END";
 const String PEM_EOL = "-----";
 const String COLON = ":";
 
-def Header = HashMap<[String, String]>;
+alias Header = HashMap {String, String};
 
-fault PemError
+faultdef INVALID_PEM_LINE_END, PEM_TYPE_MISMATCH;
+
+fn PemBlock? decode(String s, Allocator allocator)
 {
-	INVALID_PEM_LINE_END,
-	PEM_TYPE_MISMATCH,
+	return (Parser){}.init(s).pem_block(allocator);
 }
 
-fn PemBlock! decode(String s, Allocator allocator)
-{
-	return Parser{}.init(s).pem_block(allocator);
-}
-
-fn PemBlock! decode_new(String s) => decode(s, allocator::heap());
-fn PemBlock! decode_temp(String s) => decode(s, allocator::temp());
+fn PemBlock? decode_new(String s) => decode(s, allocator::heap());
+fn PemBlock? decode_temp(String s) => decode(s, allocator::temp());
 
 struct PemBlock
 {
@@ -43,7 +39,7 @@ fn PemBlock* PemBlock.init(&self, Allocator allocator)
 	return self;
 }
 
-fn usz! PemBlock.to_format(&self, Formatter *f) @dynamic
+fn usz? PemBlock.to_format(&self, Formatter *f) @dynamic
 {
 	usz n;
 	n += f.printf("PEM block:\n")!;
@@ -77,7 +73,7 @@ fn usz! PemBlock.to_format(&self, Formatter *f) @dynamic
 	else
 	{
 		@pool() {
-			n += f.printf("%s\n", base64::encode_temp(self.bytes))!;
+			n += f.printf("%s\n", base64::tencode(self.bytes))!;
 		};
 	}
 	return n;
@@ -86,10 +82,10 @@ fn usz! PemBlock.to_format(&self, Formatter *f) @dynamic
 fn void PemBlock.free(&self)
 {
 	// String
-	self.type.free();
+	self.type.free(self.allocator);
 
 	// Header
-	self.header.@each(; String key, String value) { value.free(); };
+	self.header.@each(; String key, String value) { value.free(self.allocator); };
 	self.header.free();
 
 	// char[]
@@ -110,12 +106,12 @@ fn Parser* Parser.init(&self, String s)
 
  // getline returns a string with the trailing \r and \n characters removed.
  // the parser position index is moved beyond the newline character.
-fn String! Parser.getline(&p)
+fn String? Parser.getline(&p)
 {
-	if (p.pos >= p.s.len) return IoError.EOF?;
+	if (p.pos >= p.s.len) return io::EOF?;
 
 	usz start, end;
-	usz! i;
+	usz? i;
 
 	start = p.pos;
 	i = p.s[start..].index_of_char('\n');
@@ -142,7 +138,7 @@ fn String! Parser.getline(&p)
 }
 
 // moves to the next PEM begin line and reads the PEM type.
-fn usz! Parser.pem_line(&p, String pem)
+fn usz? Parser.pem_line(&p, String pem)
 {
  	// -----BEGIN PRIVACY-ENHANCED MESSAGE-----[\r]\n
 	//           ^
@@ -160,12 +156,12 @@ fn usz! Parser.pem_line(&p, String pem)
 	return start;
 }
 
-fn String! Parser.pem_type(&p)
+fn String? Parser.pem_type(&p)
 {
 	String type_line = p.getline()!;
 	if (!type_line.ends_with(PEM_EOL))
 	{
-		return PemError.INVALID_PEM_LINE_END?;
+		return INVALID_PEM_LINE_END?;
 	}
 	type_line = type_line[:^PEM_EOL.len];
 	return type_line.trim();
@@ -174,7 +170,7 @@ fn String! Parser.pem_type(&p)
 <*
 @param [&inout] header
 *>
-fn void! Parser.headers(&p, Header *header)
+fn void? Parser.headers(&p, Header *header)
 {
 	// currently we read headers and discard them
 	usz reset;
@@ -193,8 +189,8 @@ fn void! Parser.headers(&p, Header *header)
 		String key = line[:sep].trim();
 		// io::printfn("key   = %s", line[:sep]);
 
-		List(<String>) values;
-		values.temp_init();
+		List {String} values;
+		values.tinit();
 		values.push(line[sep+2..]);
 
 		while (p.s[p.pos] == ' ' || p.s[p.pos] == '\t') {
@@ -203,25 +199,25 @@ fn void! Parser.headers(&p, Header *header)
 			values.push(cont_line);
 		}
 
-		String value = string::join_new(values.to_tarray(), "", allocator::temp());
+		String value = string::join(allocator::temp(), values.to_tarray(), "");
 
 		// io::printfn("saving '%s': '%s'", key, value);
 		header.set(key, value);
 	}
 }
 
-fn PemBlock! Parser.pem_block(&p, Allocator allocator)
+fn PemBlock? Parser.pem_block(&p, Allocator allocator)
 {
 	p.pem_line(pem::PEM_START)!;
 	String begin_type = p.pem_type()!;
 
 	Header tmp_header;
-	p.headers(tmp_header.temp_init())!;
+	p.headers(tmp_header.tinit())!;
 
 	usz start = p.pos;
 	usz end = p.pem_line(pem::PEM_END)!;
 
-	if (begin_type != p.pem_type()!) return PemError.PEM_TYPE_MISMATCH?;
+	if (begin_type != p.pem_type()!) return PEM_TYPE_MISMATCH?;
 
 	String enc = p.s[start..end].trim();
 
@@ -239,10 +235,10 @@ fn PemBlock! Parser.pem_block(&p, Allocator allocator)
 	tmp_header.@each(; String key, String value)
 	{
 		// io::printfn("adding '%s': '%s'", key, value);
-		b.header.set(key.copy(allocator), value.copy(allocator));
+		b.header.set(key, value.copy(allocator));
 	};
 	b.type = begin_type.copy(allocator);
-	b.bytes = base64::decode(block[:i], allocator)!;
+	b.bytes = base64::decode(allocator, block[:i])!;
 
 	// io::printfn("block size: %d", i);
 	// io::printfn("decode len: %d", dec.decode_len(i)!);
