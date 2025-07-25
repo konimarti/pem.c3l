@@ -13,7 +13,7 @@ fn PemBlock? tdecode(InStream input) => decode(input, tmem);
 
 fn String encode(String label, char[] data, Allocator allocator = mem)
 {
-	return encoder::encode(label, data, allocator);
+	return encoder::encode(label, {}, data, allocator);
 }
 fn String tencode(String label, char[] data) => encode(label, data, tmem);
 
@@ -24,6 +24,12 @@ struct PemBlock
 	char[] decoded;
 	Allocator allocator;
 }
+
+fn String PemBlock.encode(&self, Allocator allocator = mem)
+{
+	return encoder::encode(self.label, self.headers, self.decoded, allocator);
+}
+fn String PemBlock.tencode(&self) => self.encode(tmem);
 
 fn void PemBlock.free(&self)
 {

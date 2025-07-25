@@ -25,6 +25,8 @@ struct PemBlock
 	char[]    decoded;
 	Allocator allocator;
 }
+fn String PemBlock.encode(&self, Allocator allocator = mem)
+fn String PemBlock.tencode(&self)
 fn void PemBlock.free(&self)
 ```
 
@@ -82,8 +84,8 @@ fn void main()
 
 // Output:
 // -----BEGIN SOME PEM BLOCK-----
-// AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vM
-// MDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fY
+// AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4v
+// MDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5f
 // YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8=
 // -----END SOME PEM BLOCK-----
 ```

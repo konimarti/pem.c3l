@@ -24,6 +24,7 @@ fn PemBlock? PemParser.next(&self, Allocator allocator = mem) => @pool()
 	DString base64Data = dstring::temp();
 	DString lastKey    = dstring::temp();
 	DString lastValue  = dstring::temp();
+	DString rawHeader  = dstring::temp();
 
 	Headers headers;
 	headers.tinit();
@@ -42,9 +43,7 @@ fn PemBlock? PemParser.next(&self, Allocator allocator = mem) => @pool()
 	// parse headers (lines with ':') until empty line or base64 line
 	while (try line = io::treadline(self.reader))
 	{
-		if (line.len == 0) break; // end of headers
-
-		if (string::char_in_set(line[0], "\t "))
+		if (line.len > 0 && string::char_in_set(line[0], "\t "))
 		{
 			// continuation of previous header
 			if (lastKey.len() == 0)
@@ -52,26 +51,32 @@ fn PemBlock? PemParser.next(&self, Allocator allocator = mem) => @pool()
 				return PEM_CONTINUATION_WITHOUT_HEADER?;
 			}
 			lastValue.append_chars(line[1 .. ]);
+			rawHeader.append_chars(line);
+			rawHeader.append_char('\n');
 		}
 		else if (try idx = line.index_of_char(':'))
 		{
 			// new header - store previous if any
 			if (lastKey.len() > 0)
 			{
-				headers.push({lastKey.tcopy_str(), lastValue.tcopy_str()});
+				headers.push({lastKey.tcopy_str(), lastValue.tcopy_str(), rawHeader.tcopy_str()});
 			}
 
 			lastKey.clear();
 			lastValue.clear();
 			lastKey.append_chars(line[0 .. idx - 1]);
 			lastValue.append_chars(line[idx + 1 .. ].trim());
+
+			rawHeader.clear();
+			rawHeader.append_chars(line);
+			rawHeader.append_char('\n');
 		}
 		else
 		{
-			// unexpected format - assume base64 line
+			// assume base64 line
 			if (lastKey.len() > 0)
 			{
-				headers.push({lastKey.tcopy_str(), lastValue.tcopy_str()});
+				headers.push({lastKey.tcopy_str(), lastValue.tcopy_str(), rawHeader.tcopy_str()});
 			}
 
 			base64Data.append_chars(line);

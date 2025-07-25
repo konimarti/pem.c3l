@@ -42,10 +42,11 @@ Key-Info: DES-ECB,RSA-MD2,161A3F75DC82EF26,
 
 aGVsbG8gdGhpcyBpcyBqdXN0IGEgbG9uZyBsaW5lIGZvciBiYXNlNjQgZW5jb2Rp
 bmcsIHBhZGRpbmc/Cg==
------END PRIVACY-ENHANCED MESSAGE-----`,
+-----END PRIVACY-ENHANCED MESSAGE-----
+`,
 	.want_label = "PRIVACY-ENHANCED MESSAGE",
 	.want_decoded = "hello this is just a long line for base64 encoding, padding?\n",
-	.header_len = 7
+	.header_len = 8
 	},
 };
 
@@ -89,17 +90,31 @@ aGVsbG8gYWdhaW4K
 
 text after the block`;
 
-		ByteReader *reader = (ByteReader){}.init(stream);
+	ByteReader *reader = (ByteReader){}.init(stream);
 
-		PemBlock b1 = pem::decode(reader)!!;
-		defer b1.free();
+	PemBlock b1 = pem::decode(reader)!!;
+	defer b1.free();
 
-		assert(b1.label == "PEM", "parser: failed to get label for first block");
-		assert(b1.decoded == "test", "parser: failed to get decoded body for first block");
+	assert(b1.label == "PEM", "parser: failed to get label for first block");
+	assert(b1.decoded == "test", "parser: failed to get decoded body for first block");
 
-		PemBlock b2 = pem::decode(reader)!!;
-		defer b2.free();
+	PemBlock b2 = pem::decode(reader)!!;
+	defer b2.free();
 
-		assert(b2.label == "PEM2", "parser: failed to get label for second block");
-		assert(b2.decoded == "hello again\n", "parser: failed to get decoded body for second block");
+	assert(b2.label == "PEM2", "parser: failed to get label for second block");
+	assert(b2.decoded == "hello again\n", "parser: failed to get decoded body for second block");
+}
+
+fn void test_encode_decode_pem_block() => @assert_leak()
+{
+	String pemblock = pemtests[1].input;
+	ByteReader *reader = (ByteReader){}.init(pemblock);
+
+	PemBlock b = pem::decode(reader)!!;
+	defer b.free();
+
+	String encoded = b.encode();
+	defer encoded.free(b.allocator);
+
+	assert(pemblock == encoded, "got: '%s', want: '%s'", encoded, pemblock);
 }

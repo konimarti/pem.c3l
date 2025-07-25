@@ -1,15 +1,28 @@
 module encoding::pem::encoder;
 
+import encoding::pem::header;
 import std::encoding::base64;
 
-fn String encode(String label, char[] data, Allocator allocator) => @pool()
+import std::io; // just for debugging
+
+fn String encode(String label, Headers headers, char[] data, Allocator allocator) => @pool()
 {
 	DString writer = dstring::temp();
 
 	// write BEGIN line
 	writer.appendf("-----BEGIN %s-----\n", label);
 
-	// @TODO: write headers
+	// write raw headers
+	foreach (header : headers)
+	{
+		if (header.raw.len > 0)
+		{
+			io::printfn("writing %s", header.raw);
+			writer.append_chars(header.raw);
+		}
+	}
+
+	if (headers.len() > 0) writer.append_char('\n');
 
 	// encode and wrap base64 body
 
@@ -20,7 +33,7 @@ fn String encode(String label, char[] data, Allocator allocator) => @pool()
 		usz end = i + 64;
 		if (end < base64str.len)
 		{
-			writer.append_chars(base64str[i .. end]);
+			writer.append_chars(base64str[i .. end - 1]);
 		}
 		else
 		{
