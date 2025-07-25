@@ -77,9 +77,13 @@ fn void main()
 {
 	String encoded = pem::encode("SOME PEM BLOCK", "hello world");
 
-    io::printn("PEM block:");
     io::printn(encoded);
 }
+
+// Output:
+// -----BEGIN SOME PEM BLOCK-----
+// aGVsbG8gd29ybGQ=
+// -----END SOME PEM BLOCK-----
 ```
 
 ### Installation
