@@ -7,19 +7,19 @@ API overview:
 
 ```cpp
 import encoding::pem;
+import std::io;
 
-// Decode a PEM block from a String:
-fn PemBlock! decode(String s, Allocator allocator);
-fn PemBlock! decode_new(String s);
-fn PemBlock! decode_temp(String s);
+// decode a PEM block from an InStream
+fn PemBlock? decode(InStream s, Allocator allocator = mem);
+fn PemBlock? tdecode_temp(InSream s);
 
 // PemBlock
 struct PemBlock
 {
+	String    label;
+	Headers   headers;
+	char[]    decoded;
 	Allocator allocator;
-	String type;
-	Header header;
-	char[] bytes;
 }
 ```
 
@@ -31,7 +31,8 @@ module app;
 import encoding::pem;
 import std::io;
 
-const PEM = `
+// openssl genrsa -out private-key.pem 1024
+const PEM_TEXT = `
 -----BEGIN PRIVATE KEY-----
 MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBANDJpG3QhJtrwkDp
 HU5qOdiY/PjUJTpl1MFzy/KBpfvsfzIvnYWYQiH7Y/DLLXE/J350ggbisw/PezfX
@@ -49,11 +50,13 @@ NKHCYCsRkZgh6TvedOFATUFndQqP302F/EoZfEZDN9mNyCycCemfPQPH9Zd/bDFp
 uY855E8ucATSOqY=
 -----END PRIVATE KEY-----`;
 
-fn void! main()
+fn void main()
 {
-	PemBlock block = pem::decode_new(PEM)!;
+	PemBlock block = pem::decode((ByteReader){}.init(PEM_TEXT))!!;
 	defer block.free();
-	io::printn(block);
+
+	io::printfn("Label: %s", block.label);
+	io::printfn("Text : %s", (String)block.decoded);
 }
 ```
 

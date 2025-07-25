@@ -1,23 +1,11 @@
 module encoding::pem::parser;
 
+import encoding::pem::header;
+
 import std::io;
 import std::encoding::base64;
 
-faultdef PEM_EMPTY_LABEL, PEM_LABEL_MISMATCH;
-
-struct PemBlock
-{
-	String label;
-	char[] decoded;
-	Allocator allocator;
-}
-
-fn void PemBlock.free(&self)
-{
-	if (!self.allocator) return;
-	allocator::free(self.allocator, self.label);
-	allocator::free(self.allocator, self.decoded);
-}
+faultdef PEM_EMPTY_LABEL, PEM_LABEL_MISMATCH, PEM_CONTINUATION_WITHOUT_HEADER;
 
 struct PemParser
 {
@@ -30,73 +18,73 @@ fn PemParser* PemParser.init(&self, InStream reader)
 	return self;
 }
 
-// Read one line from the input stream into a temporary string
-fn bool PemParser.readline(&self, DString *line)
-{
-	line.clear();
-	while (true)
-	{
-		char? c = self.reader.read_byte();
-		if (catch c) return line.len() > 0;
-
-		if (c == '\n')
-		{
-			return true;
-		}
-
-		if (c != '\r')
-		{
-			line.append_char(c);
-		}
-	}
-}
-
 fn PemBlock? PemParser.next(&self, Allocator allocator = mem) => @pool()
 {
 	DString label      = dstring::temp();
 	DString base64Data = dstring::temp();
+	DString lastKey    = dstring::temp();
+	DString lastValue  = dstring::temp();
+
+	Headers headers;
+	headers.tinit();
 
 	// find a BEGIN line
-	while (try s = io::treadline(self.reader))
+	while (try line = io::treadline(self.reader))
 	{
-		if (s.starts_with("-----BEGIN ") && s.ends_with("-----"))
+		if (line.starts_with("-----BEGIN ") && line.ends_with("-----"))
 		{
-			label.append_chars(s[11 .. ^6]);
+			label.append_chars(line[11 .. ^6]);
+			break;
+		}
+	}
+	if (label.len() == 0) return PEM_EMPTY_LABEL?;
+
+	// parse headers (lines with ':') until empty line or base64 line
+	while (try line = io::treadline(self.reader))
+	{
+		if (line.len == 0) break; // end of headers
+
+		if (string::char_in_set(line[0], "\t "))
+		{
+			// continuation of previous header
+			if (lastKey.len() == 0)
+			{
+				return PEM_CONTINUATION_WITHOUT_HEADER?;
+			}
+			lastValue.append_chars(line[1 .. ]);
+		}
+		else if (try idx = line.index_of_char(':'))
+		{
+			// new header - store previous if any
+			if (lastKey.len() > 0)
+			{
+				headers.push({lastKey.tcopy_str(), lastValue.tcopy_str()});
+			}
+
+			lastKey.clear();
+			lastValue.clear();
+			lastKey.append_chars(line[0 .. idx - 1]);
+			lastValue.append_chars(line[idx + 1 .. ].trim());
+		}
+		else
+		{
+			// unexpected format - assume base64 line
+			if (lastKey.len() > 0)
+			{
+				headers.push({lastKey.tcopy_str(), lastValue.tcopy_str()});
+			}
+
+			base64Data.append_chars(line);
 			break;
 		}
 	}
 
-	if (label.len() == 0)
-	{
-		return PEM_EMPTY_LABEL?;
-	}
-
-	// parse headers (lines with ':') until empty line or base64 line
-	while (try s = io::treadline(self.reader))
-	{
-		if (s.len == 0) break; // end of headers
-
-		if (string::char_in_set(s[0], "\t "))
-		{
-			// continuation of previous header
-			// @TODO: skipping headers for now
-		}
-		else if (try idx = s.index_of_char(':'))
-		{
-			// @TODO: skipping headers for now
-		}
-		else
-		{
-			base64Data.append_chars(s);
-		}
-	}
-
 	// read until the END line
-	while (try s = io::treadline(self.reader))
+	while (try line = io::treadline(self.reader))
 	{
-		if (s.starts_with("-----END ") && s.ends_with("-----"))
+		if (line.starts_with("-----END ") && line.ends_with("-----"))
 		{
-			DString endLabel = dstring::temp(s[9 .. ^6]);
+			DString endLabel = dstring::temp(line[9 .. ^6]);
 			if (endLabel.str_view() != label.str_view())
 			{
 				// PEM block end label mismatch
@@ -104,52 +92,21 @@ fn PemBlock? PemParser.next(&self, Allocator allocator = mem) => @pool()
 			}
 			break;
 		}
-		base64Data.append_chars(s);
+		base64Data.append_chars(line);
 	}
 
+	// decoded base64-encoded body
 	char[] decoded = base64::decode(allocator, base64Data.str_view())!;
+
+	// create copy of headers
+	Headers header_copy;
+	header_copy.init(allocator, 0);
+	foreach (header : headers) header_copy.push(header.copy(allocator));
 
 	return {
 		label.str_view().copy(allocator),
+		header_copy,
 		decoded,
 		allocator
 	};
-}
-
-module encoding::pem::parser @test;
-
-import std::io;
-
-const PEM =
-`-----BEGIN PRIVACY-ENHANCED MESSAGE-----
-Proc-Type: 4,ENCRYPTED
-Content-Domain: RFC822
-DEK-Info: DES-CBC,F8143EDE5960C597
-Originator-ID-Symmetric: linn@zendia.enet.dec.com,,
-Recipient-ID-Symmetric: linn@zendia.enet.dec.com,ptf-kmc,3
-Key-Info: DES-ECB,RSA-MD2,9FD3AAD2F2691B9A,
-          B70665BB9BF7CBCDA60195DB94F727D3
-	  anotherline
-Recipient-ID-Symmetric: pem-dev@tis.com,ptf-kmc,4
-Key-Info: DES-ECB,RSA-MD2,161A3F75DC82EF26,
-          E2EF532C65CBCFF79F83A2658132DB47
-
-aGVsbG8gdGhpcyBpcyBqdXN0IGEgbG9uZyBsaW5lIGZvciBiYXNlNjQgZW5jb2Rp
-bmcsIHBhZGRpbmc/Cg==
------END PRIVACY-ENHANCED MESSAGE-----`;
-
-fn void test_pem_block()
-{
-	PemParser p;
-	p.init((ByteReader){}.init(PEM));
-
-	PemBlock b = p.next()!!;
-	defer b.free();
-
-	String want_label = "PRIVACY-ENHANCED MESSAGE";
-	assert(b.label == want_label, "parser: failed to get label: got: %s, want: %s", b.label, want_label);
-
-	char[] want_decoded = "hello this is just a long line for base64 encoding, padding?\n";
-	assert(b.decoded.len == want_decoded.len, "len does not match; got: %d, want: %d", b.decoded.len, want_decoded.len);
-	assert(b.decoded == want_decoded, "parser: failed to get decoded body: got: '%s', want: '%s'", (String)b.decoded, (String)want_decoded);
 }

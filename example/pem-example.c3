@@ -4,7 +4,7 @@ import encoding::pem;
 import std::io;
 
 // openssl genrsa -out private-key.pem 1024
-const PEM = `
+const PEM_TEXT = `
 -----BEGIN PRIVATE KEY-----
 MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBANDJpG3QhJtrwkDp
 HU5qOdiY/PjUJTpl1MFzy/KBpfvsfzIvnYWYQiH7Y/DLLXE/J350ggbisw/PezfX
@@ -24,7 +24,9 @@ uY855E8ucATSOqY=
 
 fn void main()
 {
-	PemBlock block = pem::decode_new(PEM)!!;
+	PemBlock block = pem::decode((ByteReader){}.init(PEM_TEXT))!!;
 	defer block.free();
-	io::printn(block);
+
+	io::printfn("Label: %s", block.label);
+	io::printfn("Text : %s", (String)block.decoded);
 }
