@@ -71,18 +71,20 @@ fn void main()
 module app;
 
 import encoding::pem;
-import std::io;
+import std::io, std::math;
 
 fn void main()
 {
-	String encoded = pem::encode("SOME PEM BLOCK", "hello world");
+	String encoded = pem::encode("SOME PEM BLOCK", math::iota(char[128])[..]);
 
     io::printn(encoded);
 }
 
 // Output:
 // -----BEGIN SOME PEM BLOCK-----
-// aGVsbG8gd29ybGQ=
+// AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vM
+// MDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fY
+// YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8=
 // -----END SOME PEM BLOCK-----
 ```
 
