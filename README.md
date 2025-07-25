@@ -10,8 +10,8 @@ import encoding::pem;
 import std::io;
 
 // decode a PEM block from an InStream
-fn PemBlock? decode(InStream s, Allocator allocator = mem);
-fn PemBlock? tdecode_temp(InSream s);
+fn PemBlock? decode(InStream s, Allocator allocator = mem)
+fn PemBlock? tdecode(InSream s)
 
 // PemBlock
 struct PemBlock
@@ -21,6 +21,7 @@ struct PemBlock
 	char[]    decoded;
 	Allocator allocator;
 }
+fn void PemBlock.free(&self)
 ```
 
 ### Example
