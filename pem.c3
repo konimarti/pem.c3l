@@ -1,6 +1,8 @@
 module encoding::pem;
 
 import encoding::pem::parser;
+import encoding::pem::encoder;
+
 import std::io;
 
 fn PemBlock? decode(InStream input, Allocator allocator = mem)
@@ -8,6 +10,12 @@ fn PemBlock? decode(InStream input, Allocator allocator = mem)
 	return (PemParser){}.init(input).next(allocator);
 }
 fn PemBlock? tdecode(InStream input) => decode(input, tmem);
+
+fn String encode(String label, char[] data, Allocator allocator = mem)
+{
+	return encoder::encode(label, data, allocator);
+}
+fn String tencode(String label, char[] data) => encode(label, data, tmem);
 
 struct PemBlock
 {
@@ -30,5 +38,3 @@ fn void PemBlock.free(&self)
 
 	*self = {};
 }
-
-

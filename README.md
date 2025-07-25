@@ -13,6 +13,10 @@ import std::io;
 fn PemBlock? decode(InStream s, Allocator allocator = mem)
 fn PemBlock? tdecode(InSream s)
 
+// encode PEM data into a String
+fn String encode(String label, char[] data, Allocator allocator = mem)
+fn String tencode(String label, char[] data)
+
 // PemBlock
 struct PemBlock
 {
@@ -24,7 +28,7 @@ struct PemBlock
 fn void PemBlock.free(&self)
 ```
 
-### Example
+### Decode
 
 ```cpp
 module app;
@@ -33,7 +37,7 @@ import encoding::pem;
 import std::io;
 
 // openssl genrsa -out private-key.pem 1024
-const PEM_TEXT = `
+const PEM_KEY = `
 -----BEGIN PRIVATE KEY-----
 MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBANDJpG3QhJtrwkDp
 HU5qOdiY/PjUJTpl1MFzy/KBpfvsfzIvnYWYQiH7Y/DLLXE/J350ggbisw/PezfX
@@ -53,11 +57,28 @@ uY855E8ucATSOqY=
 
 fn void main()
 {
-	PemBlock block = pem::decode((ByteReader){}.init(PEM_TEXT))!!;
+	PemBlock block = pem::decode((ByteReader){}.init(PEM_KEY))!!;
 	defer block.free();
 
 	io::printfn("Label: %s", block.label);
 	io::printfn("Text : %s", (String)block.decoded);
+}
+```
+
+### Encode
+
+```cpp
+module app;
+
+import encoding::pem;
+import std::io;
+
+fn void main()
+{
+	String encoded = pem::encode("SOME PEM BLOCK", "hello world");
+
+    io::printn("PEM block:");
+    io::printn(encoded);
 }
 ```
 
