@@ -1,21 +1,21 @@
 module encoding::pem;
 
-import encoding::pem::parser;
+import encoding::pem::decoder;
 import encoding::pem::encoder;
 
 import std::io;
 
-fn PemBlock? decode(InStream input, Allocator allocator = mem)
+fn PemBlock? decode(InStream input, Allocator allocator = mem) @inline
 {
-	return (PemParser){}.init(input).next(allocator);
+	return decoder::decode(input, allocator);
 }
-fn PemBlock? tdecode(InStream input) => decode(input, tmem);
+fn PemBlock? tdecode(InStream input) @inline => decode(input, tmem);
 
-fn String encode(String label, char[] data, Allocator allocator = mem)
+fn String encode(String label, char[] data, Allocator allocator = mem) @inline
 {
 	return encoder::encode(label, {}, data, allocator);
 }
-fn String tencode(String label, char[] data) => encode(label, data, tmem);
+fn String tencode(String label, char[] data) @inline => encode(label, data, tmem);
 
 struct PemBlock
 {

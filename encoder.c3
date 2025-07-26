@@ -3,8 +3,6 @@ module encoding::pem::encoder;
 import encoding::pem::header;
 import std::encoding::base64;
 
-import std::io; // just for debugging
-
 fn String encode(String label, Headers headers, char[] data, Allocator allocator) => @pool()
 {
 	DString writer = dstring::temp();
@@ -17,7 +15,6 @@ fn String encode(String label, Headers headers, char[] data, Allocator allocator
 	{
 		if (header.raw.len > 0)
 		{
-			io::printfn("writing %s", header.raw);
 			writer.append_chars(header.raw);
 		}
 	}

@@ -1,3 +1,13 @@
+module encoding::pem::decoder;
+
+import encoding::pem::parser;
+import std::io;
+
+fn PemBlock? decode(InStream input, Allocator allocator) @inline
+{
+	return (PemParser){}.init(input).next(allocator);
+}
+
 module encoding::pem::parser;
 
 import encoding::pem::header;

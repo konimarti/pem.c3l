@@ -1,7 +1,11 @@
 ## PEM data encoding for C3
 
-Handle PEM file format in C3. Most common uses for PEM encoding is for TLS
-keys. Compliant with RFC 1421.
+The PEM format is mainly used for storing and exchanging cryptographic keys,
+certificates, and other security-related data in a human readable,
+Base64-encoded ASCII format.
+
+This implementation follows the PEM format as decribed in [RFC
+1421](https://datatracker.ietf.org/doc/html/rfc1421).
 
 API overview:
 
@@ -33,8 +37,6 @@ fn void PemBlock.free(&self)
 ### Decode
 
 ```cpp
-module app;
-
 import encoding::pem;
 import std::io;
 
@@ -63,31 +65,28 @@ fn void main()
 	defer block.free();
 
 	io::printfn("Label: %s", block.label);
-	io::printfn("Text : %s", (String)block.decoded);
+	io::printfn("Key  : %s", (String)block.decoded);
 }
 ```
 
 ### Encode
 
 ```cpp
-module app;
-
 import encoding::pem;
 import std::io, std::math;
 
 fn void main()
 {
-	String encoded = pem::encode("SOME PEM BLOCK", math::iota(char[128])[..]);
-
+    String encoded = pem::encode("PEMLABEL", math::iota(char[128])[..]);
     io::printn(encoded);
 }
 
 // Output:
-// -----BEGIN SOME PEM BLOCK-----
+// -----BEGIN PEMLABEL-----
 // AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4v
 // MDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5f
 // YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8=
-// -----END SOME PEM BLOCK-----
+// -----END PEMLABEL-----
 ```
 
 ### Installation
